@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "paper": "MindMap: Knowledge Graph Prompting Sparks Graph of Thoughts in Large Language Models",
+    "arxiv_id": "2308.09729",
+    "description": "Test dialogues for evaluating a MindMap implementation across key system behaviors"
+  },
+  "test_cases": [
+    {
+      "id": "TC001",
+      "category": "basic_kg_grounding",
+      "description": "Tests that the system retrieves and uses KG triples rather than relying purely on parametric knowledge",
+      "input": "What drug is commonly used as a first-line treatment for Type 2 diabetes?",
+      "expected_kg_path": [
+        ["Metformin", "treats", "Type 2 Diabetes"],
+        ["Metformin", "mechanism", "reduces hepatic glucose production"],
+        ["Metformin", "mechanism", "improves insulin sensitivity"]
+      ],
+      "expected_mindmap_nodes": ["Metformin", "Type 2 Diabetes", "hepatic glucose", "insulin sensitivity"],
+      "expected_answer_contains": ["Metformin", "insulin", "glucose"],
+      "ground_truth_answer": "Metformin is the standard first-line treatment for Type 2 diabetes. It reduces hepatic glucose production and improves insulin sensitivity.",
+      "pass_criteria": "Answer is grounded in retrieved KG triples and mind map reflects the retrieval path",
+      "fail_criteria": "Answer is generic or names an incorrect drug with no KG triples cited"
+    },
+    {
+      "id": "TC002",
+      "category": "multi_hop_reasoning",
+      "description": "Tests that the system can chain across 3+ KG nodes to reach an answer that cannot be found in a single triple",
+      "input": "What side effects might someone experience from a drug used to treat rheumatoid arthritis linked to autoimmune dysfunction?",
+      "expected_kg_path": [
+        ["Autoimmune dysfunction", "causes", "Rheumatoid Arthritis"],
+        ["Rheumatoid Arthritis", "treated by", "Methotrexate"],
+        ["Methotrexate", "side effect", "liver toxicity"],
+        ["Methotrexate", "side effect", "nausea"],
+        ["Methotrexate", "side effect", "increased infection risk"]
+      ],
+      "expected_mindmap_nodes": [
+        "Autoimmune dysfunction",
+        "Rheumatoid Arthritis",
+        "Methotrexate",
+        "liver toxicity",
+        "nausea",
+        "infection risk"
+      ],
+      "expected_answer_contains": ["Methotrexate", "liver", "autoimmune", "rheumatoid"],
+      "ground_truth_answer": "Rheumatoid arthritis is linked to autoimmune dysfunction and is commonly treated with Methotrexate, which can cause liver toxicity, nausea, and increased susceptibility to infections.",
+      "pass_criteria": "Mind map chains correctly across at least 3 nodes; answer traces the full path from cause to side effect",
+      "fail_criteria": "Model skips the reasoning chain and lists generic side effects without linking back through the KG path"
+    },
+    {
+      "id": "TC003",
+      "category": "hallucination_stress_test",
+      "description": "Tests a question where LLMs are known to hallucinate specific clinical values; checks KG grounding prevents fabrication",
+      "input": "What is the recommended dosage of Warfarin for an elderly patient with atrial fibrillation?",
+      "expected_kg_path": [
+        ["Warfarin", "treats", "Atrial Fibrillation"],
+        ["Elderly patients", "risk factor for", "bleeding"],
+        ["Warfarin", "requires monitoring", "INR levels"],
+        ["Warfarin", "typical dose range", "1-3mg per day"]
+      ],
+      "expected_mindmap_nodes": ["Warfarin", "Atrial Fibrillation", "elderly", "bleeding risk", "INR monitoring"],
+      "expected_answer_contains": ["Warfarin", "INR", "elderly", "bleeding"],
+      "ground_truth_answer": "Warfarin dosage for elderly patients with atrial fibrillation is typically 1-3mg/day and requires regular INR monitoring due to elevated bleeding risk in older adults.",
+      "pass_criteria": "Dosage is specific, sourced from KG triples, and bleeding risk / INR monitoring is mentioned",
+      "fail_criteria": "Model states a confident but incorrect or unsupported dosage with no KG triples flagged as the source"
+    },
+    {
+      "id": "TC004",
+      "category": "out_of_scope_fallback",
+      "description": "Tests graceful degradation when the question falls outside KG coverage; system should not fabricate KG triples",
+      "input": "What home remedies help with the common cold?",
+      "expected_kg_path": [],
+      "expected_mindmap_nodes": [],
+      "expected_answer_contains": ["knowledge graph", "general knowledge", "limited evidence"],
+      "ground_truth_answer": "The knowledge graph does not contain entries for home remedies. Based on general knowledge, rest, hydration, and honey-lemon tea are commonly suggested, though clinical evidence is limited.",
+      "pass_criteria": "System clearly signals it is falling back on parametric knowledge and does not fabricate KG triples",
+      "fail_criteria": "System invents fake KG-sourced facts (e.g. false triples) to appear more authoritative on a topic not in the KG"
+    },
+    {
+      "id": "TC005",
+      "category": "mindmap_faithfulness",
+      "description": "Tests that the generated mind map is mechanistically faithful to the answer, not just loosely related",
+      "input": "Why is ibuprofen risky for patients with chronic kidney disease?",
+      "expected_kg_path": [
+        ["Ibuprofen", "inhibits", "Prostaglandin synthesis"],
+        ["Prostaglandins", "maintain", "Renal blood flow"],
+        ["Reduced renal blood flow", "worsens", "Chronic Kidney Disease"]
+      ],
+      "expected_mindmap_nodes": [
+        "Ibuprofen",
+        "Prostaglandin synthesis",
+        "Renal blood flow",
+        "Chronic Kidney Disease"
+      ],
+      "expected_answer_contains": ["prostaglandin", "renal", "blood flow", "kidney"],
+      "ground_truth_answer": "Ibuprofen inhibits prostaglandin synthesis, which plays a key role in maintaining renal blood flow. In patients with chronic kidney disease, this reduction in perfusion can accelerate disease progression.",
+      "pass_criteria": "Mind map nodes directly correspond to the mechanistic claims in the answer, forming an unbroken causal chain",
+      "fail_criteria": "Answer is correct but mind map is vague (e.g. only shows Ibuprofen -> bad for -> kidneys) without the intermediate mechanistic nodes"
+    }
+  ]
+}
